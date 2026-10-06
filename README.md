@@ -7,7 +7,7 @@
 FilesCodeBox（文件快递柜，匿名口令分享文本/文件）的 **OpenWrt / iStoreOS 原生包**：单进程 Go 二进制 + 内置 Web 界面，procd 托管、开机自启，以 ipk 一键安装。
 
 - 单端口 `12345` 同时服务 Web 界面与 API（前端 dist 内置于包中）
-- 匿名取件/直传依赖的 Redis 由包依赖自动安装（`redis-server`，OpenWrt 官方源）
+- 取件码映射持久化由内置 Redis 承担（`redis-server` 包自动安装；core 单机内存模式列车后，UCI 关闭 redis 仍可全功能运行——进程内 KV、重启丢失未取件映射）
 - JWT 密钥自动生成并持久化，开箱即用、重启不失效
 - 配置走 UCI（`/etc/config/filescodebox`），高级项支持 drop-in `config.yaml`
 - 双架构：`x86_64`（iStoreOS 主流）/ `aarch64_generic`（ARM SBC）
@@ -46,7 +46,7 @@ opkg install /tmp/filescodebox.ipk
 | `main.open_upload` | `1` | 允许匿名上传 |
 | `main.admin_password` | 空 | 管理员密码（留空=默认 `admin123`，务必修改） |
 | `main.base_url` | 空 | 站点对外 URL（直链下载/presign 需要，局域网直访可留空） |
-| `redis.enabled` | `1` | 关闭后服务可用但匿名取件不可用 |
+| `redis.enabled` | `1` | 关闭后服务仍可用；core 单机内存模式列车后=进程内 KV（匿名取件可用、重启丢失映射），当前钉版（core v0.13.0）下匿名取件不可用 |
 | `redis.host` / `redis.port` | `127.0.0.1:6379` | Redis 地址（`redis-server` 包默认值） |
 | `redis.password` | 空 | Redis 密码 |
 
