@@ -10,8 +10,10 @@
 		},
 		"write": {
 			"ubus": {
-				"file": ["exec"]
+				"file": ["exec"],
+				"uci": ["apply", "confirm"]
 			},
+			"uci": ["^filescodebox$"],
 			"file": {
 				"/etc/init.d/filescodebox": ["exec"]
 			}

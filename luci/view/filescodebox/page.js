@@ -1,5 +1,6 @@
 'use strict';
 'require view';
+'require form';
 'require uci';
 'require rpc';
 'require dom';
@@ -7,28 +8,21 @@
 'require ui';
 
 /*
- * FilesCodeBox LuCI 入口页(luci-app-filescodebox 视图)。
+ * FilesCodeBox LuCI 页(luci-app-filescodebox 视图):服务状态/控制 + UCI 配置表单。
  *
- * 为什么是"状态 + 新窗口打开"而非 iframe 内嵌:core 安全基线对全部响应下发
- * X-Frame-Options: SAMEORIGIN(防点击劫持),LuCI(源 :80)内嵌业务端口(:12345)
- * 属跨源,浏览器必拦(白屏)。故本页只做:服务状态展示 + 启停控制 + 新窗口打开。
- *
- * 运行状态数据源:ubus service list(取 instances[*].running)。
- * 勿用 luci getInitList——iStoreOS 的 LuCI 构建里该方法不返回 running 字段
- * (只有 index/stop/enabled,真机实测),拿它判断恒显"未运行"(v0.3.0 踩坑)。
+ * - iframe 内嵌被否:core 安全基线全局下发 X-Frame-Options: SAMEORIGIN,
+ *   LuCI(:80)内嵌业务端口(:12345)属跨源必被浏览器拦,故为状态页+新窗口打开。
+ * - 运行状态数据源:ubus service list(取 instances[*].running)。
+ *   勿用 luci getInitList——iStoreOS 的 LuCI 构建不返回 running 字段(真机实测,
+ *   v0.3.0 踩坑,恒显"未运行")。
+ * - 配置表单:form.Map 直绑 /etc/config/filescodebox,应用后自动重启服务生效
+ *   (init 经 UCI→FCB_* env 注入,env 在进程启动时读取,改配置必须重启)。
  */
 
 var callServiceList = rpc.declare({
 	object: 'service',
 	method: 'list',
 	expect: { '': {} }
-});
-
-var callInitExec = rpc.declare({
-	object: 'file',
-	method: 'exec',
-	params: ['command', 'params'],
-	expect: { code: 0 }
 });
 
 var INIT_script = '/etc/init.d/filescodebox';
@@ -41,60 +35,41 @@ return view.extend({
 		]);
 	},
 
-	monitordata: null,
-
-	handleAction: function(action, ev) {
-		return fs.exec(INIT_script, [action]).then(L.bind(function() {
-			ui.hideModal();
-			/* procd 状态切换有延迟,延时后重取状态重渲染 */
-			return new Promise(function(resolve) { window.setTimeout(resolve, 2000); })
-				.then(L.bind(function() {
-					return L.resolveDefault(callServiceList(), {});
-				}, this))
-				.then(L.bind(function(res) {
-					this.monitordata = res;
-					var node = document.querySelector('#filescodebox-main');
-					if (node) {
-						dom.content(node, this.renderStatus(res));
-					}
-				}, this));
-		}, this)).catch(L.bind(function(e) {
-			ui.hideModal();
-			ui.addNotification(null, E('p', {}, _('操作失败: %s').format(e.message)));
-		}, this));
-	},
-
-	renderStatus: function(services) {
+	isRunning: function(services) {
 		var svc = (services || {})['filescodebox'];
 		var instances = (svc && svc.instances) || {};
-		var running = Object.keys(instances).some(function(k) {
+		return Object.keys(instances).some(function(k) {
 			return instances[k] && instances[k].running;
 		});
+	},
+
+	/* 服务动作(启动/停止/重启)后延时重取状态,只刷新状态面板 */
+	handleAction: function(action, ev) {
+		var self = this;
+		return fs.exec(INIT_script, [action]).then(function() {
+			return new Promise(function(resolve) { window.setTimeout(resolve, 2500); })
+				.then(function() { return L.resolveDefault(callServiceList(), {}); })
+				.then(function(services) {
+					var node = document.getElementById('filescodebox-status');
+					if (node) {
+						dom.content(node, self.renderStatusPanel(services));
+					}
+				});
+		}).catch(function(e) {
+			ui.addNotification(null, E('p', {}, _('操作失败: %s').format(e.message)));
+		});
+	},
+
+	renderStatusPanel: function(services) {
+		var self = this;
+		var running = this.isRunning(services);
 
 		var port = uci.get('filescodebox', 'main', 'port') || '12345';
-		var dataDir = uci.get('filescodebox', 'main', 'data_dir') || '/etc/filescodebox/data';
 		var url = 'http://' + window.location.hostname + ':' + port + '/';
 
 		var badge = running
 			? E('span', { 'class': 'label label-success' }, _('运行中'))
 			: E('span', { 'class': 'label label-important' }, _('未运行'));
-
-		var self = this;
-
-		var openBtn = running
-			? E('a', {
-				'class': 'btn cbi-button cbi-button-apply',
-				'href': url,
-				'target': '_blank',
-				'rel': 'noopener'
-			}, [ _('打开 FilesCodeBox 界面 ↗') ])
-			: E('a', {
-				'class': 'btn cbi-button cbi-button-negative',
-				'href': url,
-				'target': '_blank',
-				'rel': 'noopener',
-				'style': 'opacity:.45'
-			}, [ _('界面暂不可达(服务未运行) ↗') ]);
 
 		var ctlBtn = function(action, label, cls) {
 			return E('button', {
@@ -103,19 +78,12 @@ return view.extend({
 			}, [ label ]);
 		};
 
-		return E('div', {}, [
+		return E('div', { 'class': 'cbi-section' }, [
+			E('div', { 'class': 'cbi-section-descr' }, _('服务状态')),
 			E('table', { 'class': 'table' }, [
 				E('tr', {}, [
-					E('td', { 'style': 'width:33%' }, _('服务状态')),
+					E('td', { 'style': 'width:33%' }, _('运行状态')),
 					E('td', {}, [badge])
-				]),
-				E('tr', {}, [
-					E('td', {}, _('访问端口')),
-					E('td', {}, [port])
-				]),
-				E('tr', {}, [
-					E('td', {}, _('数据目录')),
-					E('td', {}, [dataDir])
 				]),
 				E('tr', {}, [
 					E('td', {}, _('管理入口')),
@@ -125,37 +93,91 @@ return view.extend({
 			E('div', { 'class': 'cbi-page-actions' }, [
 				running ? ctlBtn('restart', _('重启'), 'restart') : null,
 				running ? ctlBtn('stop', _('停止'), 'negative') : ctlBtn('start', _('启动'), 'positive'),
-				openBtn
+				running ? E('a', {
+					'class': 'btn cbi-button cbi-button-apply',
+					'href': url,
+					'target': '_blank',
+					'rel': 'noopener'
+				}, [ _('打开 FilesCodeBox 界面 ↗') ]) : null
 			])
 		]);
 	},
 
 	render: function(results) {
 		var self = this;
+		var services = (results && results[1]) || {};
 
-		var body = E([
-			E('h2', {}, _('FilesCodeBox 文件快递柜')),
-			E('div', { 'class': 'cbi-map-descr' },
-				_('匿名口令分享文本/文件。服务状态经 procd 实时查询,启停/重启按钮等价于 /etc/init.d/filescodebox 操作。')),
-			E('div', { 'class': 'cbi-section' }, [
-				E('div', { 'class': 'cbi-section-descr' }, _('服务')),
-				E('div', { 'id': 'filescodebox-main' }, self.renderStatus(results[1]))
-			]),
-			E('div', { 'class': 'cbi-section' }, [
-				E('div', { 'class': 'cbi-section-descr' }, _('提示')),
-				E('div', { 'class': 'cbi-value' },
-					_('默认管理员 admin / admin123,装完请尽快在网页设置里修改。')),
-				E('div', { 'class': 'cbi-value' },
-					_('配置在 /etc/config/filescodebox(UCI),改完执行 /etc/init.d/filescodebox reload 或点上方"重启"。')),
-				E('div', { 'class': 'cbi-value' },
-					_('上传文件与数据库存于数据目录,大容量场景建议在 UCI data_dir 指到数据盘。'))
-			])
-		]);
+		var m = new form.Map('filescodebox', _('FilesCodeBox 文件快递柜'),
+			_('匿名口令分享文本/文件。下方配置保存并应用后自动重启服务生效;也可用上方面板手动启停。'));
 
-		return body;
-	},
+		var s = m.section(form.NamedSection, 'main', 'main', _('服务'));
+		s.addremove = false;
 
-	handleSave: null,
-	handleSaveApply: null,
-	handleReset: null
+		var o;
+
+		o = s.option(form.Flag, 'enabled', _('启用服务'), _('总开关;停用后开机不自启,当前进程不受影响(用上方"停止")'));
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'port', _('访问端口'), _('网页与 API 同端口;改动保存应用后服务自动重启并切换端口'));
+		o.datatype = 'port';
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'host', _('监听地址'), _('0.0.0.0=所有接口;仅本机访问可改 127.0.0.1'));
+		o.datatype = 'host';
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'data_dir', _('数据目录'), _('SQLite/上传文件/JWT 密钥所在;更改后新数据写入新目录,**已有数据不会自动迁移**;大量文件建议指到数据盘(如 /mnt/sda1/filescodebox)'));
+		o.rmempty = false;
+
+		o = s.option(form.Flag, 'open_upload', _('允许匿名上传'), _('关闭后仅登录用户可创建分享'));
+
+		o = s.option(form.Value, 'admin_password', _('管理员密码'), _('留空=默认 admin123(网页里改过密码则以此为准的展示无关,本项仅注入启动环境);改动后需在网页用新密码登录'));
+		o.password = true;
+
+		o = s.option(form.Value, 'base_url', _('站点对外 URL'), _('直链下载/presign 用;局域网直访可留空(按请求头推断),反代/穿透场景必填,如 http://share.example.com'));
+
+		s = m.section(form.NamedSection, 'redis', 'redis', _('Redis'));
+		s.addremove = false;
+
+		o = s.option(form.Flag, 'enabled', _('启用 Redis'), _('匿名取件/直传会话依赖;关闭后按 core 钉版行为匿名取件不可用(内存模式列车后为重启丢映射)'));
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'host', _('Redis 地址'));
+		o.datatype = 'host';
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'port', _('Redis 端口'));
+		o.datatype = 'port';
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'password', _('Redis 密码'));
+		o.password = true;
+
+		/* 应用成功后自动重启服务,让新配置立即生效 */
+		m.onafterapply = function() {
+			return fs.exec(INIT_script, ['restart']).then(function() {
+				return new Promise(function(resolve) { window.setTimeout(resolve, 2500); })
+					.then(function() { return L.resolveDefault(callServiceList(), {}); })
+					.then(function(services) {
+						var node = document.getElementById('filescodebox-status');
+						if (node) {
+							dom.content(node, self.renderStatusPanel(services));
+						}
+					});
+			});
+		};
+
+		return m.render().then(function(mapEl) {
+			return E([
+				E('div', { 'id': 'filescodebox-status' }, self.renderStatusPanel(services)),
+				mapEl
+			]);
+		}).catch(function(e) {
+			/* 保险:Map 渲染失败时至少给出可读错误而非白页 */
+			return E([
+				E('h2', {}, _('FilesCodeBox 文件快递柜')),
+				E('p', {}, _('页面渲染失败: %s').format(e.message || e))
+			]);
+		});
+	}
 });

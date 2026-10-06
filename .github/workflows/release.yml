@@ -58,6 +58,11 @@ jobs:
           ./scripts/build-frontend.sh
           VERSION="${{ inputs.version || github.ref_name }}"
           ./scripts/build-ipk.sh ${{ matrix.arch }} "${VERSION#v}"
+          # aarch64 额外出 aarch64_cortex-a53 ipk 变体(iStore 官方源收录要求的
+          # opkg 架构名;同一 arm64 静态二进制,仅 control 元数据不同),提交 istore-repo 直接取用
+          if [ "${{ matrix.goarch }}" = "arm64" ]; then
+            ./scripts/build-ipk.sh aarch64_cortex-a53 "${VERSION#v}"
+          fi
           # 签名私钥(GH secret,PEM)落盘供 mkpkg --sign-key;公钥 keys/filescodebox.pem 已入库
           echo "${APK_SIGN_KEY}" > /tmp/apk-sign.key
           APK_SIGN_KEY=/tmp/apk-sign.key ./scripts/build-apk.sh ${{ matrix.arch }} "${VERSION#v}"
