@@ -3,3 +3,4 @@ bin/
 *.ipk
 .frontend-src/
 .DS_Store
+/filescodebox
