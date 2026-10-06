@@ -31,10 +31,11 @@ jobs:
         with:
           node-version: 22
       - name: 构建前端 + 组装双格式包
+        # apk3 版本格式严(数字段+letter+-rN),"ci" 这类后缀非法,CI 版本用纯 0.0.0
         run: |
           ./scripts/build-frontend.sh
-          ./scripts/build-ipk.sh x86_64 0.0.0-ci
-          ./scripts/build-apk.sh x86_64 0.0.0-ci
+          ./scripts/build-ipk.sh x86_64 0.0.0
+          ./scripts/build-apk.sh x86_64 0.0.0
       - uses: actions/upload-artifact@v4
         with:
           name: packages-x86_64
