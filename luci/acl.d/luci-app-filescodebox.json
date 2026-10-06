@@ -3,10 +3,18 @@
 		"description": "Grant access to FilesCodeBox service page",
 		"read": {
 			"ubus": {
-				"luci": ["getInitList", "getInitStatus"]
+				"luci": ["getInitList"],
+				"service": ["list"]
 			},
 			"uci": ["^filescodebox$"]
 		},
-		"write": {}
+		"write": {
+			"ubus": {
+				"file": ["exec"]
+			},
+			"file": {
+				"/etc/init.d/filescodebox": ["exec"]
+			}
+		}
 	}
 }

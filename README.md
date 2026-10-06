@@ -52,7 +52,7 @@ apk add /tmp/filescodebox.apk
 
 ### LuCI 菜单入口（装完即有）
 
-安装后 LuCI 左侧 **服务 → FilesCodeBox 文件快递柜**：显示服务运行状态/端口/数据目录，一键**新窗口打开**网页界面。
+安装后 LuCI 左侧 **服务 → FilesCodeBox 文件快递柜**：procd 实时服务状态、端口/数据目录展示、**启动/停止/重启按钮**、一键**新窗口打开**网页界面。
 
 > 说明：入口页不做 iframe 内嵌——core 安全基线对全部响应下发 `X-Frame-Options: SAMEORIGIN`（防点击劫持），LuCI（:80）内嵌业务端口（:12345）属跨源会被浏览器拦截，故采用状态页 + 新窗口打开形态。安装/升级会重启 rpcd 使 ACL 生效，**重新登录 LuCI** 即可看到菜单。
 
