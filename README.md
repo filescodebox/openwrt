@@ -16,22 +16,39 @@ FilesCodeBox（文件快递柜，匿名口令分享文本/文件）的 **OpenWrt
 
 ## 安装
 
+**按系统代际选包**：
+
+| 系统代际 | 包管理器 | 选哪个包 |
+|---|---|---|
+| OpenWrt/iStoreOS 22.03、23.05（现行 iStoreOS） | opkg | `filescodebox_<ver>-1_<arch>.ipk` |
+| OpenWrt 25.12+（apk3 新代） | apk | `filescodebox_<ver>-r0_<arch>.apk` |
+
 ### iStore（iStoreOS）
 
 iStore → 手动安装 → 粘贴 ipk 下载 URL（本仓 [Releases](https://github.com/filescodebox/openwrt/releases) 对应架构资产），或上传本地 ipk 文件。
 
-### opkg（任意 OpenWrt/iStoreOS）
+### opkg（OpenWrt/iStoreOS 22.03/23.05）
 
 ```sh
 # x86_64 设备
-wget -O /tmp/filescodebox.ipk https://github.com/filescodebox/openwrt/releases/download/v0.1.0/filescodebox_0.1.0-1_x86_64.ipk
+wget -O /tmp/filescodebox.ipk https://github.com/filescodebox/openwrt/releases/download/v0.2.0/filescodebox_0.2.0-1_x86_64.ipk
 opkg install /tmp/filescodebox.ipk
 ```
 
 （aarch64 设备换 `aarch64_generic` 包。）安装即自动启用并启动，浏览器访问 `http://<路由器IP>:12345`。
 
+### apk（OpenWrt 25.12+）
+
+```sh
+# 1) 预置签名公钥(一次性;否则 apk add 需加 --allow-untrusted)
+wget -O /etc/apk/keys/filescodebox.pem https://github.com/filescodebox/openwrt/raw/main/keys/filescodebox.pem
+# 2) 安装(依赖 redis-server 自动拉取,装后自动启用并启动)
+wget -O /tmp/filescodebox.apk https://github.com/filescodebox/openwrt/releases/download/v0.2.0/filescodebox-0.2.0-r0_x86_64.apk
+apk add /tmp/filescodebox.apk
+```
+
 - 默认管理员 `admin/admin123`——**装完先改密码**（UCI `main.admin_password` 或登录后修改）
-- 彻底卸载：`opkg remove filescodebox`（数据保留在 `/etc/filescodebox/`，确认无用后手动删除）
+- 彻底卸载：opkg 系 `opkg remove filescodebox`；apk 系 `apk del filescodebox`（数据保留在 `/etc/filescodebox/`，确认无用后手动删除）
 
 ## 配置
 
@@ -64,10 +81,11 @@ logread | grep filescodebox   # 日志(procd stdout→syslog)
 ```sh
 go build -o dist/filescodebox ./cmd/filescodebox   # CGO_ENABLED=0,纯 Go sqlite
 ./scripts/build-frontend.sh                        # 前端 dist → dist/www
-./scripts/build-ipk.sh x86_64 0.1.0                # → dist/filescodebox_0.1.0-1_x86_64.ipk
+./scripts/build-ipk.sh x86_64 0.2.0                # → dist/filescodebox_0.2.0-1_x86_64.ipk
+APK_SIGN_KEY=<私钥路径> ./scripts/build-apk.sh x86_64 0.2.0   # → 签名 apk(不设=未签名)
 ```
 
-CI 每次推送在 OpenWrt rootfs 容器（`openwrt/rootfs:x86-64-23.05.6`，对齐 iStoreOS 基线）内真实 `opkg install` + 服务启动 + `/ping` 探活。
+CI 每次推送在两个 OpenWrt rootfs 容器内真装冒烟:`x86-64-23.05.6`(opkg/ipk,对齐 iStoreOS 基线)与 `x86-64-25.12.5`(apk3 新代),均为 opkg install / apk add → 服务启动 → `/ping` 探活 → Redis 初始化断言。
 
 ## 架构
 

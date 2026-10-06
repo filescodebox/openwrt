@@ -48,7 +48,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: 前端构建 + ipk 组装
+      - name: 前端构建 + 双格式打包(ipk + 签名 apk)
+        env:
+          APK_SIGN_KEY: ${{ secrets.APK_SIGN_KEY }}
         run: |
           # 记录前端来源 commit,写进 Release notes(可复现性)
           FE_SHA=$(git ls-remote https://github.com/filescodebox/frontend.git "refs/heads/${FRONTEND_REF}" | cut -f1)
@@ -56,10 +58,15 @@ jobs:
           ./scripts/build-frontend.sh
           VERSION="${{ inputs.version || github.ref_name }}"
           ./scripts/build-ipk.sh ${{ matrix.arch }} "${VERSION#v}"
+          # 签名私钥(GH secret,PEM)落盘供 mkpkg --sign-key;公钥 keys/filescodebox.pem 已入库
+          echo "${APK_SIGN_KEY}" > /tmp/apk-sign.key
+          APK_SIGN_KEY=/tmp/apk-sign.key ./scripts/build-apk.sh ${{ matrix.arch }} "${VERSION#v}"
       - uses: actions/upload-artifact@v4
         with:
-          name: ipk-${{ matrix.arch }}
-          path: dist/filescodebox_*.ipk
+          name: packages-${{ matrix.arch }}
+          path: |
+            dist/filescodebox_*.ipk
+            dist/filescodebox-*.apk
           retention-days: 14
           if-no-files-found: error
 
@@ -72,11 +79,11 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: ipk-x86_64
+          name: packages-x86_64
           path: rel
       - uses: actions/download-artifact@v4
         with:
-          name: ipk-aarch64_generic
+          name: packages-aarch64_generic
           path: rel
       - name: 挂本仓 Release
         env:
@@ -86,8 +93,8 @@ jobs:
           gh release view "${VER}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1 || \
             gh release create "${VER}" --repo "${GITHUB_REPOSITORY}" \
               --title "FilesCodeBox OpenWrt/iStoreOS ${VER}" \
-              --notes "OpenWrt/iStoreOS 原生 ipk 包(见 Assets,按设备架构选 x86_64 / aarch64_generic)。安装与配置见 README。前端来源: filescodebox/frontend@${{ env.FE_SHA || 'main' }}。"
-          gh release upload "${VER}" rel/*.ipk --repo "${GITHUB_REPOSITORY}" --clobber
+              --notes "OpenWrt/iStoreOS 原生包(见 Assets)。双格式双架构:opkg 系(22.03/23.05,含 iStoreOS 现行版)装 *_<arch>.ipk;apk3 系(25.12+)装 *-r0_<arch>.apk(先按 README 预置公钥 keys/filescodebox.pem)。前端来源: filescodebox/frontend@${{ env.FE_SHA || 'main' }}。"
+          gh release upload "${VER}" rel/*.ipk rel/*.apk --repo "${GITHUB_REPOSITORY}" --clobber
 
   attach-to-hub:
     continue-on-error: true
@@ -96,13 +103,13 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: ipk-x86_64
+          name: packages-x86_64
           path: rel
       - uses: actions/download-artifact@v4
         with:
-          name: ipk-aarch64_generic
+          name: packages-aarch64_generic
           path: rel
-      - name: 回挂 ipk 到生态主仓
+      - name: 回挂包到生态主仓
         env:
           GH_TOKEN: ${{ secrets.OPENWRT_PAT }}
           TAG: openwrt-${{ inputs.version || github.ref_name }}
@@ -111,6 +118,6 @@ jobs:
           gh release view "${TAG}" --repo filescodebox/filescodebox >/dev/null 2>&1 || \
             gh release create "${TAG}" --repo filescodebox/filescodebox \
               --title "FilesCodeBox OpenWrt/iStoreOS ${VER}" \
-              --notes "OpenWrt/iStoreOS 原生 ipk 包(见 Assets)。安装说明见 openwrt 仓 README。"
-          gh release upload "${TAG}" rel/*.ipk --repo filescodebox/filescodebox --clobber
+              --notes "OpenWrt/iStoreOS 原生包(见 Assets)。安装说明见 openwrt 仓 README。"
+          gh release upload "${TAG}" rel/*.ipk rel/*.apk --repo filescodebox/filescodebox --clobber
           echo "已回挂到 filescodebox/filescodebox Releases"

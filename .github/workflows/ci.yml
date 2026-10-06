@@ -6,7 +6,8 @@ on:
   pull_request:
 
 env:
-  SMOKE_IMAGE: openwrt/rootfs:x86-64-23.05.6   # 对齐 iStoreOS 基线(22.03/23.05 系)
+  SMOKE_IMAGE: openwrt/rootfs:x86-64-23.05.6   # 对齐 iStoreOS 基线(22.03/23.05 系,opkg/ipk)
+  SMOKE_IMAGE_APK: openwrt/rootfs:x86-64-25.12.5   # apk3 新代(opkg→apk 迁移后)
 
 jobs:
   build:
@@ -29,18 +30,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: 构建前端 + 组装 ipk
+      - name: 构建前端 + 组装双格式包
         run: |
           ./scripts/build-frontend.sh
           ./scripts/build-ipk.sh x86_64 0.0.0-ci
+          ./scripts/build-apk.sh x86_64 0.0.0-ci
       - uses: actions/upload-artifact@v4
         with:
-          name: filescodebox-ipk-x86_64
-          path: dist/filescodebox_*.ipk
+          name: packages-x86_64
+          path: |
+            dist/filescodebox_*.ipk
+            dist/filescodebox-*.apk
           retention-days: 14
           if-no-files-found: error
 
-  smoke-openwrt:
+  smoke-openwrt-ipk:
     # OpenWrt rootfs 容器内真装:opkg 按 Depends 自动拉 redis-server + postinst
     # 自动启用/启动 + /ping 探活。opkg install 幂等重跑一次作为显式断言。
     needs: build
@@ -48,7 +52,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: filescodebox-ipk-x86_64
+          name: packages-x86_64
           path: dist
       - name: opkg 安装冒烟
         # rootfs 镜像默认 Cmd 为空会秒退,须显式 /sbin/init 起 OpenWrt 引导
@@ -65,3 +69,29 @@ jobs:
             logread | grep -i "redis initialized"
           '
           docker rm -f fcb-smoke
+
+  smoke-openwrt-apk:
+    # apk3 新代(25.12):apk add 按 depends 自动拉 redis-server + post-install
+    # 脚本启用/启动 + /ping 探活。CI 构建未签名(密钥只在 release),故
+    # --allow-untrusted;发布产物为签名包,受信安装已在 v0.2.0 容器实测。
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages-x86_64
+          path: dist
+      - name: apk 安装冒烟
+        run: |
+          docker rm -f fcb-smoke-apk >/dev/null 2>&1 || true
+          docker run -d --name fcb-smoke-apk "${SMOKE_IMAGE_APK}" /sbin/init
+          sleep 10
+          docker cp dist/filescodebox-*.apk fcb-smoke-apk:/tmp/
+          docker exec fcb-smoke-apk sh -eux -c '
+            apk update >/dev/null
+            apk add --allow-untrusted /tmp/filescodebox-*.apk
+            sleep 3
+            wget -qO- http://127.0.0.1:12345/ping
+            logread | grep -i "redis initialized"
+          '
+          docker rm -f fcb-smoke-apk
