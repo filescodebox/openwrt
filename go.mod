@@ -3,7 +3,7 @@ module github.com/filescodebox/openwrt
 go 1.26.5
 
 require (
-	github.com/filescodebox/core v0.13.0
+	github.com/filescodebox/core v0.13.1
 	github.com/filescodebox/kit v0.3.0
 	go.uber.org/zap v1.27.0
 )

@@ -67,6 +67,8 @@ jobs:
             opkg install /pkg/filescodebox_*.ipk
             sleep 3
             wget -qO- http://127.0.0.1:12345/ping
+            # notifies 表回归断言(env-only auto_migrate 门控曾致缺表 500,core v0.13.1 修)
+            wget -qO- http://127.0.0.1:12345/notifies/active | grep -q "\"code\":0"
             logread | grep -i "redis initialized"
           '
           docker rm -f fcb-smoke
@@ -93,6 +95,8 @@ jobs:
             apk add --allow-untrusted /tmp/filescodebox-*.apk
             sleep 3
             wget -qO- http://127.0.0.1:12345/ping
+            # notifies 表回归断言(env-only auto_migrate 门控曾致缺表 500,core v0.13.1 修)
+            wget -qO- http://127.0.0.1:12345/notifies/active | grep -q "\"code\":0"
             logread | grep -i "redis initialized"
           '
           docker rm -f fcb-smoke-apk
