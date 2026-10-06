@@ -1,0 +1,13 @@
+#!/bin/sh
+# ipk postinst:启用并启动(装完即用;镜像构建场景 IPKG_INSTROOT 非空时跳过)
+[ -n "${IPKG_INSTROOT:-}" ] && exit 0
+
+# 依赖的 redis 默认不随包自启,这里一并启用
+if [ -x /etc/init.d/redis ]; then
+	/etc/init.d/redis enabled 2>/dev/null || /etc/init.d/redis enable
+	/etc/init.d/redis start 2>/dev/null
+fi
+
+/etc/init.d/filescodebox enabled 2>/dev/null || /etc/init.d/filescodebox enable
+/etc/init.d/filescodebox start
+exit 0

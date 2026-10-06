@@ -1,0 +1,36 @@
+# FilesCodeBox OpenWrt/iStoreOS 高级配置参考模板。
+#
+# 本文件【不随 ipk 安装】。常用配置走 UCI(/etc/config/filescodebox,
+# 由 init 脚本翻译成 FCB_* env,优先级高于本文件)。
+# 需要覆盖 UCI 面之外的项(S3/OIDC/WebDAV/联邦/mcp/moderation 等)时,
+# 把本文件复制为 /etc/filescodebox/config.yaml 后修改,服务重启即生效。
+# 完整配置项见 server 仓 configs/config.example.yaml 与 docs/ENVIRONMENT_VARIABLES.md。
+
+server:
+  host: "0.0.0.0"
+  port: 12345
+  mode: "release"
+  # base_url 留空=分享链接用请求头推断;反代/穿透场景建议显式配置(也可用 UCI base_url)
+  base_url: ""
+database:
+  driver: "sqlite"
+  db_name: "/etc/filescodebox/data/fileCodeBox.db"
+app:
+  name: "FilesCodeBox"
+  datapath: "/etc/filescodebox/data"
+upload:
+  # 匿名口令分享是产品核心能力,开箱即用(UCI open_upload 同名项可关)
+  open_upload: true
+  upload_size: 10485760      # 10MB 单请求体上限
+  enable_chunk: true
+  chunk_size: 2097152        # 2MB
+storage:
+  type: "local"
+  storage_path: "/etc/filescodebox/data/files"
+log:
+  level: "info"
+user:
+  allow_user_registration: false  # 路由器场景默认关闭开放注册(管理员建号);如需开放改 true
+observability:
+  metrics:
+    enabled: false

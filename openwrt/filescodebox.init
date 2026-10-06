@@ -1,0 +1,74 @@
+#!/bin/sh /etc/rc.common
+# FilesCodeBox procd init 脚本(ipk 安装为 /etc/init.d/filescodebox)
+#
+# 配置面:UCI /etc/config/filescodebox → FCB_* 环境变量注入(core envBindings,
+# env 优先级高于配置文件)。可选变量只在非空时注入——viper 默认 AllowEmptyEnv=false,
+# 空串 env 会被忽略,显式判空语义更清晰。
+#
+# 高级配置:创建 /etc/filescodebox/config.yaml 后自动生效(二进制 --config),
+# 适用于 S3/OIDC/联邦等 UCI 面未覆盖的项。
+
+USE_PROCD=1
+START=99
+STOP=15
+
+PROG=/usr/bin/filescodebox
+
+start_service() {
+	local enabled port host data_dir open_upload admin_password base_url
+	local redis_enabled redis_host redis_port redis_password
+
+	config_load filescodebox
+
+	config_get_bool enabled main enabled 1
+	[ "$enabled" = "1" ] || return 0
+
+	config_get port main port 12345
+	config_get host main host "0.0.0.0"
+	config_get data_dir main data_dir "/etc/filescodebox/data"
+	config_get_bool open_upload main open_upload 1
+	config_get admin_password main admin_password ""
+	config_get base_url main base_url ""
+
+	config_get_bool redis_enabled redis enabled 1
+	config_get redis_host redis host "127.0.0.1"
+	config_get redis_port redis port 6379
+	config_get redis_password redis password ""
+
+	mkdir -m 0755 -p "$data_dir"
+
+	procd_open_instance
+	procd_set_param command "$PROG"
+	procd_set_param env \
+		FCB_SERVER_HOST="$host" \
+		FCB_SERVER_PORT="$port" \
+		FCB_SERVER_MODE=release \
+		FCB_PRODUCTION=1 \
+		FCB_DATABASE_DRIVER=sqlite \
+		FCB_DATABASE_DB_NAME="$data_dir/fileCodeBox.db" \
+		FCB_DATA_PATH="$data_dir" \
+		FCB_STORAGE_PATH="$data_dir/files" \
+		FCB_OPEN_UPLOAD="$open_upload"
+
+	# 可选项:非空才注入
+	[ -n "$admin_password" ] && procd_append_param env FCB_ADMIN_PASSWORD="$admin_password"
+	[ -n "$base_url" ] && procd_append_param env FCB_SERVER_BASE_URL="$base_url"
+	if [ "$redis_enabled" = "1" ]; then
+		procd_append_param env FCB_REDIS_HOST="$redis_host" FCB_REDIS_PORT="$redis_port"
+		[ -n "$redis_password" ] && procd_append_param env FCB_REDIS_PASSWORD="$redis_password"
+	fi
+
+	procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-5} ${respawn_retry:-0}
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+}
+
+reload_service() {
+	stop
+	start
+}
+
+service_triggers() {
+	procd_add_reload_trigger filescodebox
+}

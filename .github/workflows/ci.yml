@@ -1,0 +1,67 @@
+name: CI
+# 推送/PR:Go 质量 + amd64 构建 + ipk 组装 + OpenWrt rootfs 容器内 opkg 安装冒烟。
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+env:
+  SMOKE_IMAGE: openwrt/rootfs:x86-64-23.05.6   # 对齐 iStoreOS 基线(22.03/23.05 系)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: go vet + test
+        run: |
+          go vet ./...
+          go test ./... -race
+      - name: 构建 linux/amd64 二进制
+        run: |
+          VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo dev)
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+            -ldflags="-w -s -X 'github.com/filescodebox/kit/version.Version=${VERSION}'" \
+            -o dist/filescodebox ./cmd/filescodebox
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 构建前端 + 组装 ipk
+        run: |
+          ./scripts/build-frontend.sh
+          ./scripts/build-ipk.sh x86_64 0.0.0-ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: filescodebox-ipk-x86_64
+          path: dist/filescodebox_*.ipk
+          retention-days: 14
+          if-no-files-found: error
+
+  smoke-openwrt:
+    # OpenWrt rootfs 容器内真装:opkg 按 Depends 自动拉 redis-server + postinst
+    # 自动启用/启动 + /ping 探活。opkg install 幂等重跑一次作为显式断言。
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: filescodebox-ipk-x86_64
+          path: dist
+      - name: opkg 安装冒烟
+        # rootfs 镜像默认 Cmd 为空会秒退,须显式 /sbin/init 起 OpenWrt 引导
+        # (procd 托管 + postinst 自动启用/启动),再 exec 进去做断言。
+        run: |
+          docker rm -f fcb-smoke >/dev/null 2>&1 || true
+          docker run -d --name fcb-smoke -v "$PWD/dist:/pkg:ro" "${SMOKE_IMAGE}" /sbin/init
+          sleep 10
+          docker exec fcb-smoke sh -eux -c '
+            opkg update >/dev/null
+            opkg install /pkg/filescodebox_*.ipk
+            sleep 3
+            wget -qO- http://127.0.0.1:12345/ping
+            logread | grep -i "redis initialized"
+          '
+          docker rm -f fcb-smoke
