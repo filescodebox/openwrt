@@ -31,7 +31,7 @@ iStore → 手动安装 → 粘贴 ipk 下载 URL（本仓 [Releases](https://gi
 
 ```sh
 # x86_64 设备
-wget -O /tmp/filescodebox.ipk https://github.com/filescodebox/openwrt/releases/download/v0.2.0/filescodebox_0.2.0-1_x86_64.ipk
+wget -O /tmp/filescodebox.ipk https://github.com/filescodebox/openwrt/releases/download/v0.3.0/filescodebox_0.3.0-1_x86_64.ipk
 opkg install /tmp/filescodebox.ipk
 ```
 
@@ -43,12 +43,18 @@ opkg install /tmp/filescodebox.ipk
 # 1) 预置签名公钥(一次性;否则 apk add 需加 --allow-untrusted)
 wget -O /etc/apk/keys/filescodebox.pem https://github.com/filescodebox/openwrt/raw/main/keys/filescodebox.pem
 # 2) 安装(依赖 redis-server 自动拉取,装后自动启用并启动)
-wget -O /tmp/filescodebox.apk https://github.com/filescodebox/openwrt/releases/download/v0.2.0/filescodebox-0.2.0-r0_x86_64.apk
+wget -O /tmp/filescodebox.apk https://github.com/filescodebox/openwrt/releases/download/v0.3.0/filescodebox-0.3.0-r0_x86_64.apk
 apk add /tmp/filescodebox.apk
 ```
 
 - 默认管理员 `admin/admin123`——**装完先改密码**（UCI `main.admin_password` 或登录后修改）
 - 彻底卸载：opkg 系 `opkg remove filescodebox`；apk 系 `apk del filescodebox`（数据保留在 `/etc/filescodebox/`，确认无用后手动删除）
+
+### LuCI 菜单入口（装完即有）
+
+安装后 LuCI 左侧 **服务 → FilesCodeBox 文件快递柜**：显示服务运行状态/端口/数据目录，一键**新窗口打开**网页界面。
+
+> 说明：入口页不做 iframe 内嵌——core 安全基线对全部响应下发 `X-Frame-Options: SAMEORIGIN`（防点击劫持），LuCI（:80）内嵌业务端口（:12345）属跨源会被浏览器拦截，故采用状态页 + 新窗口打开形态。安装/升级会重启 rpcd 使 ACL 生效，**重新登录 LuCI** 即可看到菜单。
 
 ## 配置
 

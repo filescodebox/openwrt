@@ -8,4 +8,6 @@ if [ -x /etc/init.d/redis ]; then
 fi
 /etc/init.d/filescodebox enabled 2>/dev/null || /etc/init.d/filescodebox enable
 /etc/init.d/filescodebox start
+# 重载 rpcd 使新增的 LuCI ACL 生效(用户重登 LuCI 后菜单可见)
+[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart 2>/dev/null
 exit 0

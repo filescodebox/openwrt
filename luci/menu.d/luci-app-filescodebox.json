@@ -1,0 +1,21 @@
+{
+	"admin/services/filescodebox": {
+		"title": "FilesCodeBox",
+		"order": 85,
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": ["luci-app-filescodebox"]
+		}
+	},
+
+	"admin/services/filescodebox/ui": {
+		"title": "文件快递柜",
+		"order": 1,
+		"action": {
+			"type": "view",
+			"path": "filescodebox/page"
+		}
+	}
+}

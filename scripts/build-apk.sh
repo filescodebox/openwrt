@@ -31,11 +31,18 @@ DATA="$STAGING/data"
 install -d "$DATA/usr/bin" \
 	"$DATA/usr/share/filescodebox/www" \
 	"$DATA/etc/config" \
-	"$DATA/etc/init.d"
+	"$DATA/etc/init.d" \
+	"$DATA/usr/share/luci/menu.d" \
+	"$DATA/usr/share/rpcd/acl.d" \
+	"$DATA/www/luci-static/resources/view/filescodebox"
 install -m 0755 "$ROOT/dist/filescodebox" "$DATA/usr/bin/filescodebox"
 cp -R "$ROOT/dist/www/." "$DATA/usr/share/filescodebox/www/"
 install -m 0644 "$ROOT/openwrt/filescodebox.config" "$DATA/etc/config/filescodebox"
 install -m 0755 "$ROOT/openwrt/filescodebox.init" "$DATA/etc/init.d/filescodebox"
+# LuCI 入口页(服务→FilesCodeBox:状态+新窗口打开 UI)
+install -m 0644 "$ROOT/luci/menu.d/luci-app-filescodebox.json" "$DATA/usr/share/luci/menu.d/"
+install -m 0644 "$ROOT/luci/acl.d/luci-app-filescodebox.json" "$DATA/usr/share/rpcd/acl.d/"
+install -m 0644 "$ROOT/luci/view/filescodebox/page.js" "$DATA/www/luci-static/resources/view/filescodebox/page.js"
 
 POSTINST="$STAGING/post-install"
 install -m 0755 "$ROOT/openwrt/filescodebox.post-install" "$POSTINST"
