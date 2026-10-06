@@ -31,7 +31,7 @@ iStore → 手动安装 → 粘贴 ipk 下载 URL（本仓 [Releases](https://gi
 
 ```sh
 # x86_64 设备
-wget -O /tmp/filescodebox.ipk https://github.com/filescodebox/openwrt/releases/download/v0.3.0/filescodebox_0.3.0-1_x86_64.ipk
+wget -O /tmp/filescodebox.ipk https://github.com/filescodebox/openwrt/releases/download/v0.4.0/filescodebox_0.4.0-1_x86_64.ipk
 opkg install /tmp/filescodebox.ipk
 ```
 
@@ -43,7 +43,7 @@ opkg install /tmp/filescodebox.ipk
 # 1) 预置签名公钥(一次性;否则 apk add 需加 --allow-untrusted)
 wget -O /etc/apk/keys/filescodebox.pem https://github.com/filescodebox/openwrt/raw/main/keys/filescodebox.pem
 # 2) 安装(依赖 redis-server 自动拉取,装后自动启用并启动)
-wget -O /tmp/filescodebox.apk https://github.com/filescodebox/openwrt/releases/download/v0.3.0/filescodebox-0.3.0-r0_x86_64.apk
+wget -O /tmp/filescodebox.apk https://github.com/filescodebox/openwrt/releases/download/v0.4.0/filescodebox-0.4.0-r0_x86_64.apk
 apk add /tmp/filescodebox.apk
 ```
 
@@ -52,7 +52,7 @@ apk add /tmp/filescodebox.apk
 
 ### LuCI 菜单入口（装完即有）
 
-安装后 LuCI 左侧 **服务 → FilesCodeBox 文件快递柜**：procd 实时服务状态、端口/数据目录展示、**启动/停止/重启按钮**、一键**新窗口打开**网页界面。
+安装后 LuCI 左侧 **服务 → FilesCodeBox 文件快递柜**：procd 实时服务状态、**可视化配置表单**（端口/监听地址/数据目录/匿名上传/管理员密码/对外 URL/Redis，保存并应用后自动重启服务生效）、**启动/停止/重启按钮**、一键**新窗口打开**网页界面。
 
 > 说明：入口页不做 iframe 内嵌——core 安全基线对全部响应下发 `X-Frame-Options: SAMEORIGIN`（防点击劫持），LuCI（:80）内嵌业务端口（:12345）属跨源会被浏览器拦截，故采用状态页 + 新窗口打开形态。安装/升级会重启 rpcd 使 ACL 生效，**重新登录 LuCI** 即可看到菜单。
 
@@ -87,8 +87,8 @@ logread | grep filescodebox   # 日志(procd stdout→syslog)
 ```sh
 go build -o dist/filescodebox ./cmd/filescodebox   # CGO_ENABLED=0,纯 Go sqlite
 ./scripts/build-frontend.sh                        # 前端 dist → dist/www
-./scripts/build-ipk.sh x86_64 0.2.0                # → dist/filescodebox_0.2.0-1_x86_64.ipk
-APK_SIGN_KEY=<私钥路径> ./scripts/build-apk.sh x86_64 0.2.0   # → 签名 apk(不设=未签名)
+./scripts/build-ipk.sh x86_64 0.4.0                # → dist/filescodebox_0.4.0-1_x86_64.ipk
+APK_SIGN_KEY=<私钥路径> ./scripts/build-apk.sh x86_64 0.4.0   # → 签名 apk(不设=未签名)
 ```
 
 CI 每次推送在两个 OpenWrt rootfs 容器内真装冒烟:`x86-64-23.05.6`(opkg/ipk,对齐 iStoreOS 基线)与 `x86-64-25.12.5`(apk3 新代),均为 opkg install / apk add → 服务启动 → `/ping` 探活 → Redis 初始化断言。
