@@ -1,6 +1,6 @@
 #!/bin/sh
 # ipk prerm:升级/卸载前停服务(升级后由新包 postinst 重新拉起)
-# 卸载不删数据:/etc/filescodebox/ 保留,彻底清除请手动删除该目录
+# 卸载不删数据:/etc/pigeonbox/ 保留,彻底清除请手动删除该目录
 [ -n "${IPKG_INSTROOT:-}" ] && exit 0
-/etc/init.d/filescodebox stop 2>/dev/null
+/etc/init.d/pigeonbox stop 2>/dev/null
 exit 0

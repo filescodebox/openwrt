@@ -25,8 +25,8 @@ jobs:
         run: |
           VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo dev)
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-            -ldflags="-w -s -X 'github.com/filescodebox/kit/version.Version=${VERSION}'" \
-            -o dist/filescodebox ./cmd/filescodebox
+            -ldflags="-w -s -X 'github.com/pigeonbox/kit/version.Version=${VERSION}'" \
+            -o dist/pigeonbox ./cmd/pigeonbox
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -40,8 +40,8 @@ jobs:
         with:
           name: packages-x86_64
           path: |
-            dist/filescodebox_*.ipk
-            dist/filescodebox-*.apk
+            dist/pigeonbox_*.ipk
+            dist/pigeonbox-*.apk
           retention-days: 14
           if-no-files-found: error
 
@@ -64,7 +64,7 @@ jobs:
           sleep 10
           docker exec fcb-smoke sh -eux -c '
             opkg update >/dev/null
-            opkg install /pkg/filescodebox_*.ipk
+            opkg install /pkg/pigeonbox_*.ipk
             sleep 3
             wget -qO- http://127.0.0.1:12345/ping
             # notifies 表回归断言(env-only auto_migrate 门控曾致缺表 500,core v0.13.1 修)
@@ -89,10 +89,10 @@ jobs:
           docker rm -f fcb-smoke-apk >/dev/null 2>&1 || true
           docker run -d --name fcb-smoke-apk "${SMOKE_IMAGE_APK}" /sbin/init
           sleep 10
-          docker cp dist/filescodebox-*.apk fcb-smoke-apk:/tmp/
+          docker cp dist/pigeonbox-*.apk fcb-smoke-apk:/tmp/
           docker exec fcb-smoke-apk sh -eux -c '
             apk update >/dev/null
-            apk add --allow-untrusted /tmp/filescodebox-*.apk
+            apk add --allow-untrusted /tmp/pigeonbox-*.apk
             sleep 3
             wget -qO- http://127.0.0.1:12345/ping
             # notifies 表回归断言(env-only auto_migrate 门控曾致缺表 500,core v0.13.1 修)

@@ -8,14 +8,14 @@
 'require ui';
 
 /*
- * FilesCodeBox LuCI 页(luci-app-filescodebox 视图):服务状态/控制 + UCI 配置表单。
+ * PigeonBox LuCI 页(luci-app-pigeonbox 视图):服务状态/控制 + UCI 配置表单。
  *
  * - iframe 内嵌被否:core 安全基线全局下发 X-Frame-Options: SAMEORIGIN,
  *   LuCI(:80)内嵌业务端口(:12345)属跨源必被浏览器拦,故为状态页+新窗口打开。
  * - 运行状态数据源:ubus service list(取 instances[*].running)。
  *   勿用 luci getInitList——iStoreOS 的 LuCI 构建不返回 running 字段(真机实测,
  *   v0.3.0 踩坑,恒显"未运行")。
- * - 配置表单:form.Map 直绑 /etc/config/filescodebox,应用后自动重启服务生效
+ * - 配置表单:form.Map 直绑 /etc/config/pigeonbox,应用后自动重启服务生效
  *   (init 经 UCI→FCB_* env 注入,env 在进程启动时读取,改配置必须重启)。
  */
 
@@ -25,18 +25,18 @@ var callServiceList = rpc.declare({
 	expect: { '': {} }
 });
 
-var INIT_script = '/etc/init.d/filescodebox';
+var INIT_script = '/etc/init.d/pigeonbox';
 
 return view.extend({
 	load: function() {
 		return Promise.all([
-			uci.load('filescodebox'),
+			uci.load('pigeonbox'),
 			L.resolveDefault(callServiceList(), {})
 		]);
 	},
 
 	isRunning: function(services) {
-		var svc = (services || {})['filescodebox'];
+		var svc = (services || {})['pigeonbox'];
 		var instances = (svc && svc.instances) || {};
 		return Object.keys(instances).some(function(k) {
 			return instances[k] && instances[k].running;
@@ -50,7 +50,7 @@ return view.extend({
 			return new Promise(function(resolve) { window.setTimeout(resolve, 2500); })
 				.then(function() { return L.resolveDefault(callServiceList(), {}); })
 				.then(function(services) {
-					var node = document.getElementById('filescodebox-status');
+					var node = document.getElementById('pigeonbox-status');
 					if (node) {
 						dom.content(node, self.renderStatusPanel(services));
 					}
@@ -64,7 +64,7 @@ return view.extend({
 		var self = this;
 		var running = this.isRunning(services);
 
-		var port = uci.get('filescodebox', 'main', 'port') || '12345';
+		var port = uci.get('pigeonbox', 'main', 'port') || '12345';
 		var url = 'http://' + window.location.hostname + ':' + port + '/';
 
 		var badge = running
@@ -98,7 +98,7 @@ return view.extend({
 					'href': url,
 					'target': '_blank',
 					'rel': 'noopener'
-				}, [ _('打开 FilesCodeBox 界面 ↗') ]) : null
+				}, [ _('打开 PigeonBox 界面 ↗') ]) : null
 			])
 		]);
 	},
@@ -107,7 +107,7 @@ return view.extend({
 		var self = this;
 		var services = (results && results[1]) || {};
 
-		var m = new form.Map('filescodebox', _('FilesCodeBox 文件快递柜'),
+		var m = new form.Map('pigeonbox', _('PigeonBox 文件快递柜'),
 			_('匿名口令分享文本/文件。下方配置保存并应用后自动重启服务生效;也可用上方面板手动启停。'));
 
 		var s = m.section(form.NamedSection, 'main', 'main', _('服务'));
@@ -126,7 +126,7 @@ return view.extend({
 		o.datatype = 'host';
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'data_dir', _('数据目录'), _('SQLite/上传文件/JWT 密钥所在;更改后新数据写入新目录,**已有数据不会自动迁移**;大量文件建议指到数据盘(如 /mnt/sda1/filescodebox)'));
+		o = s.option(form.Value, 'data_dir', _('数据目录'), _('SQLite/上传文件/JWT 密钥所在;更改后新数据写入新目录,**已有数据不会自动迁移**;大量文件建议指到数据盘(如 /mnt/sda1/pigeonbox)'));
 		o.rmempty = false;
 
 		o = s.option(form.Flag, 'open_upload', _('允许匿名上传'), _('关闭后仅登录用户可创建分享'));
@@ -159,7 +159,7 @@ return view.extend({
 				return new Promise(function(resolve) { window.setTimeout(resolve, 2500); })
 					.then(function() { return L.resolveDefault(callServiceList(), {}); })
 					.then(function(services) {
-						var node = document.getElementById('filescodebox-status');
+						var node = document.getElementById('pigeonbox-status');
 						if (node) {
 							dom.content(node, self.renderStatusPanel(services));
 						}
@@ -169,13 +169,13 @@ return view.extend({
 
 		return m.render().then(function(mapEl) {
 			return E([
-				E('div', { 'id': 'filescodebox-status' }, self.renderStatusPanel(services)),
+				E('div', { 'id': 'pigeonbox-status' }, self.renderStatusPanel(services)),
 				mapEl
 			]);
 		}).catch(function(e) {
 			/* 保险:Map 渲染失败时至少给出可读错误而非白页 */
 			return E([
-				E('h2', {}, _('FilesCodeBox 文件快递柜')),
+				E('h2', {}, _('PigeonBox 文件快递柜')),
 				E('p', {}, _('页面渲染失败: %s').format(e.message || e))
 			]);
 		});

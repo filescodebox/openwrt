@@ -6,13 +6,13 @@
 #   version: 包版本,如 0.1.0 (control 写作 <version>-1)
 #
 # 输入约定(相对仓库根):
-#   dist/filescodebox                      Go 静态二进制
+#   dist/pigeonbox                      Go 静态二进制
 #   dist/www/                              前端 dist(index.html + assets/)
-#   openwrt/filescodebox.init              procd init
-#   openwrt/filescodebox.config            UCI 默认配置
-#   openwrt/filescodebox.postinst/.prerm   控制脚本
+#   openwrt/pigeonbox.init              procd init
+#   openwrt/pigeonbox.config            UCI 默认配置
+#   openwrt/pigeonbox.postinst/.prerm   控制脚本
 #
-# 产物: output_dir/filescodebox_<version>-1_<arch>.ipk
+# 产物: output_dir/pigeonbox_<version>-1_<arch>.ipk
 set -euo pipefail
 
 ARCH=${1:?用法: build-ipk.sh <arch> <version> [output_dir]}
@@ -23,43 +23,43 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STAGING="$(mktemp -d)"
 trap 'rm -rf "$STAGING"' EXIT
 
-[ -f "$ROOT/dist/filescodebox" ] || { echo "缺 dist/filescodebox(先 go build)"; exit 1; }
+[ -f "$ROOT/dist/pigeonbox" ] || { echo "缺 dist/pigeonbox(先 go build)"; exit 1; }
 [ -f "$ROOT/dist/www/index.html" ] || { echo "缺 dist/www/index.html(先 build-frontend.sh)"; exit 1; }
 
 # ---- 数据树 ----
 DATA="$STAGING/data"
 install -d "$DATA/usr/bin" \
-	"$DATA/usr/share/filescodebox/www" \
+	"$DATA/usr/share/pigeonbox/www" \
 	"$DATA/etc/config" \
 	"$DATA/etc/init.d" \
 	"$DATA/usr/share/luci/menu.d" \
 	"$DATA/usr/share/rpcd/acl.d" \
-	"$DATA/www/luci-static/resources/view/filescodebox"
-install -m 0755 "$ROOT/dist/filescodebox" "$DATA/usr/bin/filescodebox"
-cp -R "$ROOT/dist/www/." "$DATA/usr/share/filescodebox/www/"
-install -m 0644 "$ROOT/openwrt/filescodebox.config" "$DATA/etc/config/filescodebox"
-install -m 0755 "$ROOT/openwrt/filescodebox.init" "$DATA/etc/init.d/filescodebox"
-# LuCI 入口页(服务→FilesCodeBox:状态+新窗口打开 UI)
-install -m 0644 "$ROOT/luci/menu.d/luci-app-filescodebox.json" "$DATA/usr/share/luci/menu.d/"
-install -m 0644 "$ROOT/luci/acl.d/luci-app-filescodebox.json" "$DATA/usr/share/rpcd/acl.d/"
-install -m 0644 "$ROOT/luci/view/filescodebox/page.js" "$DATA/www/luci-static/resources/view/filescodebox/page.js"
+	"$DATA/www/luci-static/resources/view/pigeonbox"
+install -m 0755 "$ROOT/dist/pigeonbox" "$DATA/usr/bin/pigeonbox"
+cp -R "$ROOT/dist/www/." "$DATA/usr/share/pigeonbox/www/"
+install -m 0644 "$ROOT/openwrt/pigeonbox.config" "$DATA/etc/config/pigeonbox"
+install -m 0755 "$ROOT/openwrt/pigeonbox.init" "$DATA/etc/init.d/pigeonbox"
+# LuCI 入口页(服务→PigeonBox:状态+新窗口打开 UI)
+install -m 0644 "$ROOT/luci/menu.d/luci-app-pigeonbox.json" "$DATA/usr/share/luci/menu.d/"
+install -m 0644 "$ROOT/luci/acl.d/luci-app-pigeonbox.json" "$DATA/usr/share/rpcd/acl.d/"
+install -m 0644 "$ROOT/luci/view/pigeonbox/page.js" "$DATA/www/luci-static/resources/view/pigeonbox/page.js"
 
 # ---- 控制区 ----
 CONTROL="$STAGING/CONTROL"
 install -d "$CONTROL"
 cat > "$CONTROL/control" <<EOF
-Package: filescodebox
+Package: pigeonbox
 Version: ${VERSION}-1
 Depends: libc, redis-server
 Architecture: ${ARCH}
-Maintainer: FilesCodeBox <admin@filescodebox.cc>
+Maintainer: PigeonBox <admin@pigeonbox.cc>
 Section: net
-Source: https://github.com/filescodebox/openwrt
-Description: FilesCodeBox - anonymous file and text sharing server (OpenWrt/iStoreOS native package)
+Source: https://github.com/pigeonbox/openwrt
+Description: PigeonBox - anonymous file and text sharing server (OpenWrt/iStoreOS native package)
 EOF
-echo "/etc/config/filescodebox" > "$CONTROL/conffiles"
-install -m 0755 "$ROOT/openwrt/filescodebox.postinst" "$CONTROL/postinst"
-install -m 0755 "$ROOT/openwrt/filescodebox.prerm" "$CONTROL/prerm"
+echo "/etc/config/pigeonbox" > "$CONTROL/conffiles"
+install -m 0755 "$ROOT/openwrt/pigeonbox.postinst" "$CONTROL/postinst"
+install -m 0755 "$ROOT/openwrt/pigeonbox.prerm" "$CONTROL/prerm"
 
 # ---- tar 属主统一 root:root(GNU/BSD tar 旗标不同;mac 须关 AppleDouble) ----
 # 格式强制 ustar/gnu:macOS bsdtar 默认 pax-restricted,文件带扩展属性时写入
@@ -72,7 +72,7 @@ fi
 export COPYFILE_DISABLE=1
 
 mkdir -p "$ROOT/$OUTDIR"
-IPK="$ROOT/$OUTDIR/filescodebox_${VERSION}-1_${ARCH}.ipk"
+IPK="$ROOT/$OUTDIR/pigeonbox_${VERSION}-1_${ARCH}.ipk"
 : > "$STAGING/debian-binary"
 tar -czf "$STAGING/control.tar.gz" "${TAROWN[@]}" -C "$CONTROL" .
 tar -czf "$STAGING/data.tar.gz" "${TAROWN[@]}" -C "$DATA" .

@@ -1,21 +1,21 @@
 {
-	"luci-app-filescodebox": {
-		"description": "Grant access to FilesCodeBox service page",
+	"luci-app-pigeonbox": {
+		"description": "Grant access to PigeonBox service page",
 		"read": {
 			"ubus": {
 				"luci": ["getInitList"],
 				"service": ["list"]
 			},
-			"uci": ["^filescodebox$"]
+			"uci": ["^pigeonbox$"]
 		},
 		"write": {
 			"ubus": {
 				"file": ["exec"],
 				"uci": ["apply", "confirm"]
 			},
-			"uci": ["^filescodebox$"],
+			"uci": ["^pigeonbox$"],
 			"file": {
-				"/etc/init.d/filescodebox": ["exec"]
+				"/etc/init.d/pigeonbox": ["exec"]
 			}
 		}
 	}

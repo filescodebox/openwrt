@@ -1,11 +1,11 @@
 .PHONY: build test vet frontend ipx clean
 
-# FilesCodeBox OpenWrt/iStoreOS 适配层
+# PigeonBox OpenWrt/iStoreOS 适配层
 # 独立构建钉 go.mod 正式版本(core v0.13.0);在 hub 工作区内直接跑会拾取
 # 上层 go.work 联编本地 core,GOWORK=off 强制钉版构建,两者皆可。
 
-build:            ## 编译本机二进制(dist/filescodebox,默认 static-dir 指向包内路径)
-	go build -o dist/filescodebox ./cmd/filescodebox
+build:            ## 编译本机二进制(dist/pigeonbox,默认 static-dir 指向包内路径)
+	go build -o dist/pigeonbox ./cmd/pigeonbox
 
 test:
 	go test ./... -race
