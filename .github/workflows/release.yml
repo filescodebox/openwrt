@@ -4,8 +4,8 @@ name: Release
 #   2. release: 双 ipk 挂本仓 Release(GITHUB_TOKEN 同仓写即可)
 #   3. attach-to-hub: 回挂到生态主仓 pigeonbox/pigeonbox 的 Release(tag openwrt-v*,
 #      与 fnos-v*/desktop-v* 同模式——二进制产物统一在主仓 Releases 可下载;
-#      跨仓写用 OPENWRT_PAT,secret 未配置时本 job 失败放行(continue-on-error),
-#      本地 `gh release upload` 兜底)
+#      跨仓写用 OPENWRT_PAT;断链必须响(2026-10-08 拔除 continue-on-error——
+#      PAT 失效静默放行只会让 hub 统一出口缺资产))
 # workflow_dispatch: 传 version(现有 tag 名)对该版本手动重跑 ipk 打包+双挂
 on:
   push:
@@ -16,9 +16,6 @@ on:
         description: '目标版本(现有 tag 名,如 v0.1.0)。仅重跑 ipk 打包+双挂'
         required: true
         type: string
-
-env:
-  FRONTEND_REF: main   # frontend 仓未打 tag,发布时构建 main;升级钉 tag 后改这里并记录 SHA
 
 jobs:
   build:
@@ -35,6 +32,18 @@ jobs:
         with:
           # 手动 dispatch 时按输入版本检出对应 tag,产物与 tag 严格一致
           ref: ${{ inputs.version || github.ref_name }}
+      - name: 版本一致性断言(VERSION/go.mod 钉版与 DEPS.env 对齐)
+        run: |
+          VER=${{ inputs.version || github.ref_name }}
+          if [ -f VERSION ]; then
+            [ "$(cat VERSION)" = "${VER#v}" ] || { echo "::error::VERSION=$(cat VERSION) ≠ tag $VER——发版走 hub 列车 bump,勿手改 VERSION"; exit 1; }
+            . ./DEPS.env
+            grep -q "github.com/pigeonbox/core ${CORE_PIN}" go.mod || { echo "::error::go.mod core 钉版 ≠ DEPS.env CORE_PIN=${CORE_PIN}(fnos v1.2.7 悬空钉版守卫)"; exit 1; }
+          fi
+      - name: 读依赖钉版(DEPS.env;前列车 tag 无此文件时回退 main)
+        run: |
+          if [ -f DEPS.env ]; then grep -E '^FRONTEND_REF=' DEPS.env >> "$GITHUB_ENV"
+          else echo "::warning::无 DEPS.env(前列车 tag),FRONTEND_REF 回退 main"; echo "FRONTEND_REF=main" >> "$GITHUB_ENV"; fi
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
@@ -52,8 +61,8 @@ jobs:
         env:
           APK_SIGN_KEY: ${{ secrets.APK_SIGN_KEY }}
         run: |
-          # 记录前端来源 commit,写进 Release notes(可复现性)
-          FE_SHA=$(git ls-remote https://github.com/pigeonbox/frontend.git "refs/heads/${FRONTEND_REF}" | cut -f1)
+          # 记录前端来源 commit,写进 Release notes(可复现性;tag/分支引用都兼容)
+          FE_SHA=$(git ls-remote https://github.com/pigeonbox/frontend.git "refs/tags/${FRONTEND_REF}^{}" "refs/heads/${FRONTEND_REF}" | head -1 | cut -f1)
           echo "FE_SHA=${FE_SHA}" >> "$GITHUB_ENV"
           ./scripts/build-frontend.sh
           VERSION="${{ inputs.version || github.ref_name }}"
@@ -102,7 +111,6 @@ jobs:
           gh release upload "${VER}" rel/*.ipk rel/*.apk --repo "${GITHUB_REPOSITORY}" --clobber
 
   attach-to-hub:
-    continue-on-error: true
     needs: build
     runs-on: ubuntu-latest
     steps:
