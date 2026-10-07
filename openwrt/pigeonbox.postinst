@@ -9,7 +9,7 @@ if [ -x /etc/init.d/redis ]; then
 fi
 
 /etc/init.d/pigeonbox enabled 2>/dev/null || /etc/init.d/pigeonbox enable
-/etc/init.d/pigeonbox start
+/etc/init.d/pigeonbox restart
 
 # 重载 rpcd 使新增的 LuCI ACL(/usr/share/rpcd/acl.d)生效
 # (会话会失效,用户重登 LuCI 后菜单可见)
