@@ -65,11 +65,15 @@ INFO_ARGS=(
 )
 
 # ---- mkpkg ----
+# post-install 只在全新安装时执行;apk3 升级走 post-upgrade——两者都必须挂同一个
+# 重启脚本,否则升级后服务停留在旧进程/停机状态(真机踩坑,缺 post-upgrade 时
+# 1.14.0→1.14.2 升级后服务不拉起)。
 if [ -n "${APK_BIN:-}" ]; then
 	SIGN_ARGS=()
 	[ -n "${APK_SIGN_KEY:-}" ] && SIGN_ARGS=(--sign-key "$APK_SIGN_KEY")
 	"$APK_BIN" "${SIGN_ARGS[@]}" mkpkg "${INFO_ARGS[@]}" \
-		--files "$DATA" --script "post-install:${POSTINST}" \
+		--files "$DATA" \
+		--script "post-install:${POSTINST}" --script "post-upgrade:${POSTINST}" \
 		--output "$OUT_APK"
 else
 	KEYMOUNT=()
@@ -81,7 +85,8 @@ else
 	docker run --rm --platform linux/amd64 \
 		-v "$STAGING:/staging" -v "$APKOUT:/out" "${KEYMOUNT[@]}" \
 		alpine:edge apk "${KEYARG[@]}" mkpkg "${INFO_ARGS[@]}" \
-		--files "/staging/data" --script "post-install:/staging/post-install" \
+		--files "/staging/data" \
+		--script "post-install:/staging/post-install" --script "post-upgrade:/staging/post-install" \
 		--output "/out/$(basename "$OUT_APK")"
 fi
 
