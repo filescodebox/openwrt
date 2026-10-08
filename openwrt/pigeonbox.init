@@ -1,7 +1,7 @@
 #!/bin/sh /etc/rc.common
 # PigeonBox procd init 脚本(ipk 安装为 /etc/init.d/pigeonbox)
 #
-# 配置面:UCI /etc/config/pigeonbox → FCB_* 环境变量注入(core envBindings,
+# 配置面:UCI /etc/config/pigeonbox → PB_* 环境变量注入(core envBindings,
 # env 优先级高于配置文件)。可选变量只在非空时注入——viper 默认 AllowEmptyEnv=false,
 # 空串 env 会被忽略,显式判空语义更清晰。
 #
@@ -40,22 +40,22 @@ start_service() {
 	procd_open_instance
 	procd_set_param command "$PROG"
 	procd_set_param env \
-		FCB_SERVER_HOST="$host" \
-		FCB_SERVER_PORT="$port" \
-		FCB_SERVER_MODE=release \
-		FCB_PRODUCTION=1 \
-		FCB_DATABASE_DRIVER=sqlite \
-		FCB_DATABASE_DB_NAME="$data_dir/fileCodeBox.db" \
-		FCB_DATA_PATH="$data_dir" \
-		FCB_STORAGE_PATH="$data_dir/files" \
-		FCB_OPEN_UPLOAD="$open_upload"
+		PB_SERVER_HOST="$host" \
+		PB_SERVER_PORT="$port" \
+		PB_SERVER_MODE=release \
+		PB_PRODUCTION=1 \
+		PB_DATABASE_DRIVER=sqlite \
+		PB_DATABASE_DB_NAME="$data_dir/fileCodeBox.db" \
+		PB_DATA_PATH="$data_dir" \
+		PB_STORAGE_PATH="$data_dir/files" \
+		PB_OPEN_UPLOAD="$open_upload"
 
 	# 可选项:非空才注入
-	[ -n "$admin_password" ] && procd_append_param env FCB_ADMIN_PASSWORD="$admin_password"
-	[ -n "$base_url" ] && procd_append_param env FCB_SERVER_BASE_URL="$base_url"
+	[ -n "$admin_password" ] && procd_append_param env PB_ADMIN_PASSWORD="$admin_password"
+	[ -n "$base_url" ] && procd_append_param env PB_SERVER_BASE_URL="$base_url"
 	if [ "$redis_enabled" = "1" ]; then
-		procd_append_param env FCB_REDIS_HOST="$redis_host" FCB_REDIS_PORT="$redis_port"
-		[ -n "$redis_password" ] && procd_append_param env FCB_REDIS_PASSWORD="$redis_password"
+		procd_append_param env PB_REDIS_HOST="$redis_host" PB_REDIS_PORT="$redis_port"
+		[ -n "$redis_password" ] && procd_append_param env PB_REDIS_PASSWORD="$redis_password"
 	fi
 
 	procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-5} ${respawn_retry:-0}

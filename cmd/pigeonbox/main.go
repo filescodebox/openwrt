@@ -2,7 +2,7 @@
 //
 // 运行时形态:单进程单端口。本二进制以库调用方式拉起 PigeonBox 全部业务
 // (bootstrap.BootstrapWithOptions),同端口经 SPA 回退服务前端静态资源,
-// 由 procd(/etc/init.d/pigeonbox)托管,配置经 UCI→FCB_* 环境变量注入。
+// 由 procd(/etc/init.d/pigeonbox)托管,配置经 UCI→PB_* 环境变量注入。
 //
 // 与 server 仓部署壳的差异:JWT 密钥自动生成并持久化到数据目录——路由器用户
 // 不应被迫手工生成密钥(core 安全基线在 production 模式缺强密钥时拒绝启动)。
@@ -27,21 +27,21 @@ import (
 	"go.uber.org/zap"
 )
 
-// ensureJWTSecret 保证 FCB_JWT_SECRET 存在:未显式配置时自动生成强密钥,
+// ensureJWTSecret 保证 PB_JWT_SECRET 存在:未显式配置时自动生成强密钥,
 // 持久化到数据目录(.jwt_secret,权限 0600),重启复用(已签发 token 不失效)。
 // 与 fnos 适配层同款逻辑,两处需同步演进。
 func ensureJWTSecret() {
-	if os.Getenv("FCB_JWT_SECRET") != "" {
+	if os.Getenv("PB_JWT_SECRET") != "" {
 		return
 	}
-	dataDir := os.Getenv("FCB_DATA_PATH")
+	dataDir := os.Getenv("PB_DATA_PATH")
 	if dataDir == "" {
 		dataDir = "./data"
 	}
 	secretPath := filepath.Join(dataDir, ".jwt_secret")
 	if b, err := os.ReadFile(secretPath); err == nil {
 		if s := strings.TrimSpace(string(b)); len(s) >= 32 {
-			_ = os.Setenv("FCB_JWT_SECRET", s)
+			_ = os.Setenv("PB_JWT_SECRET", s)
 			return
 		}
 	}
@@ -57,7 +57,7 @@ func ensureJWTSecret() {
 		_, _ = os.Stderr.WriteString("无法持久化 JWT 密钥(" + secretPath + "): " + err.Error() + "\n")
 		os.Exit(1)
 	}
-	_ = os.Setenv("FCB_JWT_SECRET", secret)
+	_ = os.Setenv("PB_JWT_SECRET", secret)
 }
 
 func main() {

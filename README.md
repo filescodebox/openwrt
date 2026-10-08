@@ -96,7 +96,7 @@ CI 每次推送在两个 OpenWrt rootfs 容器内真装冒烟:`x86-64-23.05.6`(o
 ## 架构
 
 ```
-/etc/init.d/pigeonbox   procd init:UCI→FCB_* env 注入
+/etc/init.d/pigeonbox   procd init:UCI→PB_* env 注入
 /usr/bin/pigeonbox      BootstrapWithOptions(WithStaticDir) 单进程业务+UI
 /usr/share/pigeonbox/www 内置前端(Vite 构建产物)
 /etc/config/pigeonbox   UCI 配置(conffile)

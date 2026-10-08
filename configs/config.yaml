@@ -1,7 +1,7 @@
 # PigeonBox OpenWrt/iStoreOS 高级配置参考模板。
 #
 # 本文件【不随 ipk 安装】。常用配置走 UCI(/etc/config/pigeonbox,
-# 由 init 脚本翻译成 FCB_* env,优先级高于本文件)。
+# 由 init 脚本翻译成 PB_* env,优先级高于本文件)。
 # 需要覆盖 UCI 面之外的项(S3/OIDC/WebDAV/联邦/mcp/moderation 等)时,
 # 把本文件复制为 /etc/pigeonbox/config.yaml 后修改,服务重启即生效。
 # 完整配置项见 server 仓 configs/config.example.yaml 与 docs/ENVIRONMENT_VARIABLES.md。

@@ -16,7 +16,7 @@
  *   勿用 luci getInitList——iStoreOS 的 LuCI 构建不返回 running 字段(真机实测,
  *   v0.3.0 踩坑,恒显"未运行")。
  * - 配置表单:form.Map 直绑 /etc/config/pigeonbox,应用后自动重启服务生效
- *   (init 经 UCI→FCB_* env 注入,env 在进程启动时读取,改配置必须重启)。
+ *   (init 经 UCI→PB_* env 注入,env 在进程启动时读取,改配置必须重启)。
  */
 
 var callServiceList = rpc.declare({
