@@ -9,6 +9,9 @@ env:
   SMOKE_IMAGE: openwrt/rootfs:x86-64-23.05.6   # 对齐 iStoreOS 基线(22.03/23.05 系,opkg/ipk)
   SMOKE_IMAGE_APK: openwrt/rootfs:x86-64-25.12.5   # apk3 新代(opkg→apk 迁移后)
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,6 +24,9 @@ jobs:
         run: |
           go vet ./...
           go test ./... -race
+      # 依赖漏洞门禁（govulncheck）：可达漏洞即红；修复策略=升依赖地板，不许注释绕过
+      - name: Govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
       - name: 构建 linux/amd64 二进制
         run: |
           VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo dev)
