@@ -3,7 +3,7 @@ module github.com/pigeonbox/openwrt
 go 1.26.5
 
 require (
-	github.com/pigeonbox/core v0.14.5
+	github.com/pigeonbox/core v0.14.7
 	github.com/pigeonbox/kit v0.3.1
 	go.uber.org/zap v1.27.0
 )
