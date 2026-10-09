@@ -131,7 +131,7 @@ return view.extend({
 
 		o = s.option(form.Flag, 'open_upload', _('允许匿名上传'), _('关闭后仅登录用户可创建分享'));
 
-		o = s.option(form.Value, 'admin_password', _('管理员密码'), _('留空=默认 admin123(网页里改过密码则以此为准的展示无关,本项仅注入启动环境);改动后需在网页用新密码登录'));
+		o = s.option(form.Value, 'admin_password', _('管理员密码'), _('留空=不改动(首次启动走 /setup 向导创建管理员);非空=管理员口令以本项为准——已存在则就地更新并吊销旧会话,保存应用后服务自动重启生效'));
 		o.password = true;
 
 		o = s.option(form.Value, 'base_url', _('站点对外 URL'), _('直链下载/presign 用;局域网直访可留空(按请求头推断),反代/穿透场景必填,如 http://share.example.com'));

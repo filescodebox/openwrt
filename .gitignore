@@ -4,3 +4,4 @@ bin/
 .frontend-src/
 .DS_Store
 /pigeonbox
+/filescodebox

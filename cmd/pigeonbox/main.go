@@ -23,6 +23,7 @@ import (
 	"github.com/pigeonbox/core/bootstrap"
 	"github.com/pigeonbox/core/pkg/logger"
 	"github.com/pigeonbox/kit/version"
+	"github.com/pigeonbox/openwrt/internal/adminsync"
 
 	"go.uber.org/zap"
 )
@@ -76,6 +77,22 @@ func main() {
 
 	// 0. 保证 JWT 密钥存在(自动生成 + 数据目录持久化),必须在 bootstrap 读配置前注入。
 	ensureJWTSecret()
+
+	// 0.5 管理员密码同步:配置面(UCI admin_password)非空即权威——已有 admin
+	//     时就地更新口令并吊销旧会话(见 internal/adminsync)。失败不阻断启动。
+	dbPath := os.Getenv("PB_DATABASE_DB_NAME")
+	if dbPath == "" {
+		dataDir := os.Getenv("PB_DATA_PATH")
+		if dataDir == "" {
+			dataDir = "./data"
+		}
+		dbPath = filepath.Join(dataDir, "fileCodeBox.db")
+	}
+	if changed, err := adminsync.Sync(dbPath, os.Getenv("PB_ADMIN_PASSWORD")); err != nil {
+		_, _ = os.Stderr.WriteString("管理员密码同步失败(不阻断启动): " + err.Error() + "\n")
+	} else if changed {
+		_, _ = os.Stderr.WriteString("已按 PB_ADMIN_PASSWORD 更新 admin 口令,旧会话已吊销\n")
+	}
 
 	// 1. 以库调用方式拉起 PigeonBox 全部业务,SPA 回退服务前端。
 	//    返回的 *server.Hertz 已完成:读配置→初始化logger→建DB→建storage→装路由→装中间件。

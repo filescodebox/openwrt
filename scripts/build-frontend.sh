@@ -3,7 +3,8 @@
 #
 # 来源优先级:
 #   1. FRONTEND_DIR 环境变量指定的目录
-#   2. 工作区已检出的 frontend 仓(../../frontend,hub make setup 布局)
+#   2. 工作区已检出的 frontend 仓(../frontend,hub make setup 布局——openwrt 与
+#      frontend 同级;此前多一级 ../../ 静默回退克隆远端,本地改动不进包)
 #   3. 临时克隆 pigeonbox/frontend <FRONTEND_REF,默认 main>
 #
 # 说明:打包只跑 vite build(跳过 vue-tsc——类型检查由 frontend 仓 CI 独立把守);
@@ -18,8 +19,8 @@ rm -rf "$OUT"
 SRC="${FRONTEND_DIR:-}"
 CLEANUP_SRC=""
 if [ -z "$SRC" ]; then
-	if [ -f "$ROOT/../../frontend/package.json" ]; then
-		SRC="$(cd "$ROOT/../../frontend" && pwd)"
+	if [ -f "$ROOT/../frontend/package.json" ]; then
+		SRC="$(cd "$ROOT/../frontend" && pwd)"
 		echo "→ 使用工作区 frontend: $SRC"
 	else
 		SRC="$(mktemp -d)/frontend"

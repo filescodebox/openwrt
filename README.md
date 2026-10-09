@@ -47,7 +47,7 @@ wget -O /tmp/pigeonbox.apk https://github.com/pigeonbox/openwrt/releases/downloa
 apk add /tmp/pigeonbox.apk
 ```
 
-- 默认管理员 `admin/admin123`——**装完先改密码**（UCI `main.admin_password` 或登录后修改）
+- 管理员口令：未设置时首次启动走 **`/setup` 向导**创建管理员（生产门禁拒绝默认 `admin123`）；UCI `main.admin_password` 非空时口令以该项为准（已存在则就地更新并吊销旧会话），也可登录后在网页修改
 - 彻底卸载：opkg 系 `opkg remove pigeonbox`；apk 系 `apk del pigeonbox`（数据保留在 `/etc/pigeonbox/`，确认无用后手动删除）
 
 ### LuCI 菜单入口（装完即有）
@@ -67,7 +67,7 @@ apk add /tmp/pigeonbox.apk
 | `main.host` | `0.0.0.0` | 监听地址 |
 | `main.data_dir` | `/etc/pigeonbox/data` | SQLite+上传文件+JWT 密钥；**大量文件建议指到数据盘**（如 `/mnt/sda1/pigeonbox`） |
 | `main.open_upload` | `1` | 允许匿名上传 |
-| `main.admin_password` | 空 | 管理员密码（留空=默认 `admin123`，务必修改） |
+| `main.admin_password` | 空 | 管理员密码（留空=不改动，首次启动走 `/setup` 向导；非空=口令以本项为准，保存应用后自动重启生效并吊销旧会话） |
 | `main.base_url` | 空 | 站点对外 URL（直链下载/presign 需要，局域网直访可留空） |
 | `redis.enabled` | `1` | 关闭后服务仍可用；core 单机内存模式列车后=进程内 KV（匿名取件可用、重启丢失映射），当前钉版（core v0.13.0）下匿名取件不可用 |
 | `redis.host` / `redis.port` | `127.0.0.1:6379` | Redis 地址（`redis-server` 包默认值） |
