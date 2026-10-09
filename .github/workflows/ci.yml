@@ -36,6 +36,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: web 类型检查(2026-10-09 拆仓:web/ 自包含,frontend-core tgz 钉版)
+        run: cd web && npm ci --no-audit --no-fund && npm run typecheck
       - name: 构建前端 + 组装双格式包
         # apk3 版本格式严(数字段+letter+-rN),"ci" 这类后缀非法,CI 版本用纯 0.0.0
         run: |

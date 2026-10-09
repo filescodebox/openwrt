@@ -1,39 +1,27 @@
 #!/usr/bin/env bash
-# 构建前端 dist → dist/www(ipk 内置 UI 的来源)。
+# 构建前端 dist → dist/www(ipk/apk 内置 UI 的来源)。
 #
-# 来源优先级:
-#   1. FRONTEND_DIR 环境变量指定的目录
-#   2. 工作区已检出的 frontend 仓(../frontend,hub make setup 布局——openwrt 与
-#      frontend 同级;此前多一级 ../../ 静默回退克隆远端,本地改动不进包)
-#   3. 临时克隆 pigeonbox/frontend <FRONTEND_REF,默认 main>
-#
-# 说明:打包只跑 vite build(跳过 vue-tsc——类型检查由 frontend 仓 CI 独立把守);
-# wire 类型依赖 @pigeonbox/contracts 的 Release tgz 资产(匿名可下)。
+# 来源(2026-10-09 拆仓:web 自包含在本仓 web/):
+#   1. FRONTEND_DIR 环境变量指定的现成 dist 目录(直接拷贝,跳过构建)
+#   2. 本仓 web/(neutral 构建:core 自带入口+默认无宿主适配器——OpenWrt 为
+#      独立端口部署;frontend-core tgz 钉版在 web/package.json)
+# 不再克隆 frontend 仓——ipk/apk web 内容随本仓提交可复现;
+# 类型检查由本仓 CI 把守。
 set -euo pipefail
 
-FRONTEND_REF=${FRONTEND_REF:-main}
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/dist/www"
 rm -rf "$OUT"
 
-SRC="${FRONTEND_DIR:-}"
-CLEANUP_SRC=""
-if [ -z "$SRC" ]; then
-	if [ -f "$ROOT/../frontend/package.json" ]; then
-		SRC="$(cd "$ROOT/../frontend" && pwd)"
-		echo "→ 使用工作区 frontend: $SRC"
-	else
-		SRC="$(mktemp -d)/frontend"
-		CLEANUP_SRC="$SRC"
-		echo "→ 克隆 frontend@$FRONTEND_REF"
-		git clone -q --depth 1 -b "$FRONTEND_REF" \
-			"https://github.com/pigeonbox/frontend.git" "$SRC"
-	fi
+if [ -n "${FRONTEND_DIR:-}" ]; then
+	cp -R "$FRONTEND_DIR/." "$OUT"
+	echo "→ 使用现成 dist: $FRONTEND_DIR"
+else
+	cd "$ROOT/web"
+	[ -d node_modules ] || npm ci --no-audit --no-fund
+	# APP_VERSION=页脚「前端版本」(缺省=web/package.json version,前端列车号)
+	APP_VERSION="${APP_VERSION:-$(node -p "require('./package.json').version")}" \
+		npx vite build --outDir "$OUT" --emptyOutDir
 fi
-trap '[ -n "$CLEANUP_SRC" ] && rm -rf "$(dirname "$CLEANUP_SRC")"' EXIT
-
-cd "$SRC"
-[ -d node_modules ] || npm ci --no-audit --no-fund
-npx vite build --outDir "$OUT" --emptyOutDir
 
 echo "✓ 前端构建完成: $OUT ($(du -sh "$OUT" | cut -f1))"
