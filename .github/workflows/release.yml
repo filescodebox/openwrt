@@ -40,10 +40,7 @@ jobs:
             . ./DEPS.env
             grep -q "github.com/pigeonbox/core ${CORE_PIN}" go.mod || { echo "::error::go.mod core 钉版 ≠ DEPS.env CORE_PIN=${CORE_PIN}(fnos v1.2.7 悬空钉版守卫)"; exit 1; }
           fi
-      - name: 读依赖钉版(DEPS.env;前列车 tag 无此文件时回退 main)
-        run: |
-          if [ -f DEPS.env ]; then grep -E '^FRONTEND_REF=' DEPS.env >> "$GITHUB_ENV"
-          else echo "::warning::无 DEPS.env(前列车 tag),FRONTEND_REF 回退 main"; echo "FRONTEND_REF=main" >> "$GITHUB_ENV"; fi
+      # 前端自包含在本仓 web/(frontend-core tgz 钉版=web/package.json),无需读壳仓 ref
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
@@ -61,9 +58,7 @@ jobs:
         env:
           APK_SIGN_KEY: ${{ secrets.APK_SIGN_KEY }}
         run: |
-          # 记录前端来源 commit,写进 Release notes(可复现性;tag/分支引用都兼容)
-          FE_SHA=$(git ls-remote https://github.com/pigeonbox/frontend.git "refs/tags/${FRONTEND_REF}^{}" "refs/heads/${FRONTEND_REF}" | head -1 | cut -f1)
-          echo "FE_SHA=${FE_SHA}" >> "$GITHUB_ENV"
+          # 前端自包含在本仓 web/(钉版可复现性=web/package.json 的 frontend-core tgz)
           ./scripts/build-frontend.sh
           VERSION="${{ inputs.version || github.ref_name }}"
           ./scripts/build-ipk.sh ${{ matrix.arch }} "${VERSION#v}"
@@ -107,7 +102,7 @@ jobs:
           gh release view "${VER}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1 || \
             gh release create "${VER}" --repo "${GITHUB_REPOSITORY}" \
               --title "PigeonBox OpenWrt/iStoreOS ${VER}" \
-              --notes "OpenWrt/iStoreOS 原生包(见 Assets)。双格式双架构:opkg 系(22.03/23.05,含 iStoreOS 现行版)装 *_<arch>.ipk;apk3 系(25.12+)装 *-r0_<arch>.apk(先按 README 预置公钥 keys/pigeonbox.pem)。前端来源: pigeonbox/frontend@${{ env.FE_SHA || 'main' }}。"
+              --notes "OpenWrt/iStoreOS 原生包(见 Assets)。双格式双架构:opkg 系(22.03/23.05,含 iStoreOS 现行版)装 *_<arch>.ipk;apk3 系(25.12+)装 *-r0_<arch>.apk(先按 README 预置公钥 keys/pigeonbox.pem)。前端自包内 web/(frontend-core tgz 钉版)。"
           gh release upload "${VER}" rel/*.ipk rel/*.apk --repo "${GITHUB_REPOSITORY}" --clobber
 
   attach-to-hub:
