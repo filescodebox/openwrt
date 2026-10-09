@@ -51,7 +51,7 @@ jobs:
             -X 'github.com/pigeonbox/kit/version.Version=${{ inputs.version || github.ref_name }}' \
             -X 'github.com/pigeonbox/kit/version.BuildCommit=${{ github.sha }}'" \
             -o dist/pigeonbox ./cmd/pigeonbox
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
       - name: 前端构建 + 双格式打包(ipk + 签名 apk)
