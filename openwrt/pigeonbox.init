@@ -52,6 +52,10 @@ start_service() {
 
 	# 可选项:非空才注入
 	[ -n "$admin_password" ] && procd_append_param env PB_ADMIN_PASSWORD="$admin_password"
+	# 生产门禁逃生门(core v0.14.9):未注入 admin_password 时放行 /setup 首启向导
+	# 建号——否则全新安装会被 ErrInsecureDefaultAdmin 拒启(1.14.3 冒烟暴露)。
+	# 升级场景库中已有 admin,本 env 无副作用。
+	[ -z "$admin_password" ] && procd_append_param env PB_DISABLE_DEFAULT_ADMIN=true
 	[ -n "$base_url" ] && procd_append_param env PB_SERVER_BASE_URL="$base_url"
 	if [ "$redis_enabled" = "1" ]; then
 		procd_append_param env PB_REDIS_HOST="$redis_host" PB_REDIS_PORT="$redis_port"
